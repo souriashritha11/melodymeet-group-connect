@@ -86,7 +86,7 @@ const ROOMS_DATA = [
 
 // ─── APP ENTRY ────────────────────────────────────────────────────────────────
 export default function App() {
-    const [screen, setScreen] = useState<'dashboard' | 'create' | 'session'>('dashboard');
+    const [screen, setScreen] = useState<'dashboard' | 'create' | 'session' | 'notifications'>('dashboard');
     const insets = useSafeAreaInsets();
 
     return (
@@ -96,6 +96,7 @@ export default function App() {
                 <DashboardScreen
                     onCreateRoom={() => setScreen('create')}
                     onJoinRoom={() => setScreen('session')}
+                    onOpenNotifications={() => setScreen('notifications')}
                     insets={insets}
                 />
             )}
@@ -112,12 +113,18 @@ export default function App() {
                     insets={insets}
                 />
             )}
+            {screen === 'notifications' && (
+                <NotificationsScreen
+                    onBack={() => setScreen('dashboard')}
+                    insets={insets}
+                />
+            )}
         </View>
     );
 }
 
 // ─── DASHBOARD SCREEN ─────────────────────────────────────────────────────────
-function DashboardScreen({ onCreateRoom, onJoinRoom, insets }: any) {
+function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, insets }: any) {
     const [activeTab, setActiveTab] = useState(0);
     const [searchText, setSearchText] = useState('');
     const liveCount = ROOMS_DATA.filter(r => r.isLive).length;
@@ -156,7 +163,7 @@ function DashboardScreen({ onCreateRoom, onJoinRoom, insets }: any) {
                     <Text style={styles.dashSubtitle}>Shared listening space</Text>
                 </View>
                 <View style={styles.dashHeaderRight}>
-                    <Pressable style={styles.dashHeaderBtn}>
+                    <Pressable style={styles.dashHeaderBtn} onPress={onOpenNotifications}>
                         <Ionicons name="notifications-outline" size={24} color="#222" />
                     </Pressable>
                     <Pressable style={[styles.dashHeaderBtn, { marginLeft: 6 }]}>
@@ -796,6 +803,102 @@ function ActiveSessionScreen({ onEnd, insets }: any) {
                     <Text style={styles.endBtnText}>End Session</Text>
                 </Pressable>
             </BlurView>
+        </View>
+    );
+}
+
+// ─── NOTIFICATIONS SCREEN ─────────────────────────────────────────────────────
+function NotificationsScreen({ onBack, insets }: any) {
+    const NOTIFICATIONS = [
+        {
+            section: 'TODAY',
+            data: [
+                {
+                    id: '1',
+                    title: 'Lo-fi chill Session is live',
+                    desc: 'Your favourite room hosted by MM-1234 just went live',
+                    time: '2 min ago',
+                    icon: 'musical-notes-outline',
+                },
+                {
+                    id: '2',
+                    title: 'MM-2026 joined your room',
+                    desc: 'Late Night Jazz • Now 3 participants',
+                    time: '18 min ago',
+                    icon: 'person-outline',
+                },
+                {
+                    id: '3',
+                    title: 'Room invite received',
+                    desc: 'MM-2026 invited you to Rock Classics Night',
+                    time: '18 min ago',
+                    icon: 'link-outline',
+                },
+            ],
+        },
+        {
+            section: 'YESTERDAY',
+            data: [
+                {
+                    id: '4',
+                    title: 'Room auto-closed',
+                    desc: 'Late Night Jazz closed due to inactivity',
+                    time: '11:40 PM',
+                    icon: 'information-circle-outline',
+                },
+                {
+                    id: '5',
+                    title: 'Security Alert',
+                    desc: 'New device login detected on yo account',
+                    time: '6:22 PM',
+                    icon: 'lock-closed-outline',
+                },
+            ],
+        },
+    ];
+
+    return (
+        <View style={[styles.screen, { backgroundColor: '#FCFCFF' }]}>
+            <Animated.View
+                entering={FadeInDown.delay(100).springify()}
+                style={[styles.notifHeader, { paddingTop: insets.top + 10 }]}
+            >
+                <Pressable style={styles.notifBackBtn} onPress={onBack}>
+                    <Ionicons name="chevron-back" size={24} color="#000" />
+                </Pressable>
+                <Text style={styles.notifTitle}>Notifications</Text>
+                <Pressable style={styles.notifClearBtn}>
+                    <Text style={styles.notifClearText}>Clear All</Text>
+                </Pressable>
+            </Animated.View>
+
+            <ScrollView contentContainerStyle={styles.notifScrollContent} showsVerticalScrollIndicator={false}>
+                {NOTIFICATIONS.map((section, sIdx) => (
+                    <Animated.View key={section.section} entering={FadeInUp.delay(200 + sIdx * 100).springify()}>
+                        <Text style={styles.notifSectionTitle}>{section.section}</Text>
+                        <View style={styles.notifCard}>
+                            {section.data.map((item, iIdx) => (
+                                <View
+                                    key={item.id}
+                                    style={[
+                                        styles.notifItem,
+                                        iIdx < section.data.length - 1 && styles.notifItemBorder,
+                                    ]}
+                                >
+                                    <View style={styles.notifIconCircle}>
+                                        <Ionicons name={item.icon as any} size={22} color="#6C47FF" />
+                                    </View>
+                                    <View style={styles.notifItemContent}>
+                                        <Text style={styles.notifItemTitle}>{item.title}</Text>
+                                        <Text style={styles.notifItemDesc}>{item.desc}</Text>
+                                    </View>
+                                    <Text style={styles.notifItemTime}>{item.time}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    </Animated.View>
+                ))}
+            </ScrollView>
         </View>
     );
 }
@@ -1446,5 +1549,117 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,
+    },
+
+    // ── Notifications Screen ──
+    notifHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#FCFCFF',
+    },
+    notifBackBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    notifTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#000',
+        flex: 1,
+        marginLeft: 16,
+    },
+    notifClearBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F7F4FF',
+        borderWidth: 1,
+        borderColor: '#E8DFFF',
+    },
+    notifClearText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6C47FF',
+    },
+    notifScrollContent: {
+        paddingHorizontal: 20,
+        paddingBottom: 40,
+        backgroundColor: '#FCFCFF',
+    },
+    notifSectionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#000',
+        marginTop: 24,
+        marginBottom: 12,
+        letterSpacing: 0.5,
+    },
+    notifCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 20,
+        paddingVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.03,
+        shadowRadius: 8,
+        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    notifItem: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+    },
+    notifItemBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F5F5FA',
+    },
+    notifIconCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F7F4FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+        borderWidth: 1,
+        borderColor: '#F0EAFF',
+    },
+    notifItemContent: {
+        flex: 1,
+        marginRight: 10,
+        marginTop: 2,
+    },
+    notifItemTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#111',
+        marginBottom: 4,
+    },
+    notifItemDesc: {
+        fontSize: 13,
+        color: '#666',
+        lineHeight: 18,
+    },
+    notifItemTime: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 4,
     },
 });
