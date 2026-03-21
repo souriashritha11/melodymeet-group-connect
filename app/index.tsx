@@ -86,7 +86,7 @@ const ROOMS_DATA = [
 
 // ─── APP ENTRY ────────────────────────────────────────────────────────────────
 export default function App() {
-    const [screen, setScreen] = useState<'dashboard' | 'create' | 'session' | 'notifications'>('dashboard');
+    const [screen, setScreen] = useState<'dashboard' | 'create' | 'session' | 'notifications' | 'invite'>('dashboard');
     const insets = useSafeAreaInsets();
 
     return (
@@ -110,12 +110,19 @@ export default function App() {
             {screen === 'session' && (
                 <ActiveSessionScreen
                     onEnd={() => setScreen('dashboard')}
+                    onInvite={() => setScreen('invite')}
                     insets={insets}
                 />
             )}
             {screen === 'notifications' && (
                 <NotificationsScreen
                     onBack={() => setScreen('dashboard')}
+                    insets={insets}
+                />
+            )}
+            {screen === 'invite' && (
+                <InviteParticipantsScreen
+                    onClose={() => setScreen('session')}
                     insets={insets}
                 />
             )}
@@ -556,7 +563,7 @@ function CreateRoomScreen({ onStart, onBack, insets }: any) {
 }
 
 // ─── ACTIVE SESSION SCREEN (existing) ─────────────────────────────────────────
-function ActiveSessionScreen({ onEnd, insets }: any) {
+function ActiveSessionScreen({ onEnd, onInvite, insets }: any) {
     const rotation = useSharedValue(0);
     const pulse = useSharedValue(1);
     const float1 = useSharedValue(0);
@@ -793,7 +800,7 @@ function ActiveSessionScreen({ onEnd, insets }: any) {
                             color={chatOpen ? '#000' : '#FFF'}
                         />
                     </Pressable>
-                    <Pressable style={styles.actionBtn}>
+                    <Pressable style={styles.actionBtn} onPress={onInvite}>
                         <Ionicons name="share-outline" size={24} color="#FFF" />
                     </Pressable>
                 </View>
@@ -803,6 +810,124 @@ function ActiveSessionScreen({ onEnd, insets }: any) {
                     <Text style={styles.endBtnText}>End Session</Text>
                 </Pressable>
             </BlurView>
+        </View>
+    );
+}
+
+// ─── INVITE PARTICIPANTS SCREEN ───────────────────────────────────────────────
+function InviteParticipantsScreen({ onClose, insets }: any) {
+    const PARTICIPANTS = [
+        { id: '1', name: 'ankit', uid: 'MM-1234', status: 'Invited' },
+        { id: '2', name: 'amit', uid: 'MM-1234', status: 'Invite' },
+        { id: '3', name: 'harsha', uid: 'MM-1234', status: 'Invite' },
+        { id: '4', name: 'souri', uid: 'MM-1234', status: 'Invited' },
+    ];
+
+    return (
+        <View style={[styles.screen, { backgroundColor: '#F9FAFB' }]}>
+            {/* Top Header */}
+            <View style={[styles.inviteHeader, { paddingTop: insets.top + 10 }]}>
+                <Pressable style={styles.inviteCloseBtn} onPress={onClose}>
+                    <Ionicons name="close" size={24} color="#000" />
+                </Pressable>
+                <Text style={styles.inviteTitle}>Lo-fi Chill Session</Text>
+                <View style={styles.inviteTimeBadge}>
+                    <Text style={styles.inviteTimeText}>12:34</Text>
+                </View>
+            </View>
+
+            {/* Music Card */}
+            <View style={styles.inviteMusicCardContainer}>
+                <Image source={albumCover} style={styles.inviteMusicBg} />
+                <View style={styles.inviteMusicOverlay}>
+                    <Text style={styles.inviteMusicTitle}>Midnight Lo-fi Vol.3</Text>
+                    <Text style={styles.inviteMusicArtist}>Chillhop Music</Text>
+                    
+                    <View style={styles.inviteProgressContainer}>
+                        <View style={styles.inviteProgressBar}>
+                            <View style={[styles.inviteProgressFill, { width: '68%' }]} />
+                            <View style={styles.inviteProgressThumb} />
+                        </View>
+                        <View style={styles.inviteProgressTimes}>
+                            <Text style={styles.inviteProgressTime}>7:13</Text>
+                            <Text style={styles.inviteProgressTime}>10:43</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+
+            {/* Bottom Sheet Details */}
+            <View style={styles.inviteSheet}>
+                <View style={styles.inviteDragIndicator} />
+                
+                <View style={styles.inviteSheetHeaderRow}>
+                    <Text style={styles.inviteSheetTitle}>Invite Participants</Text>
+                    <Pressable style={styles.inviteSheetCloseCircle} onPress={onClose}>
+                        <Ionicons name="close" size={16} color="#6C47FF" />
+                    </Pressable>
+                </View>
+
+                {/* Host Card */}
+                <View style={styles.inviteHostCard}>
+                    <View>
+                        <Text style={styles.inviteHostName}>Evening Chill Vibes</Text>
+                        <Text style={styles.inviteHostDesc}>1/10 joined</Text>
+                    </View>
+                    <View style={styles.inviteHostBadge}>
+                        <Text style={styles.inviteHostBadgeText}>Host</Text>
+                    </View>
+                </View>
+
+                {/* Search */}
+                <Text style={styles.inviteSearchLabel}>Search by UID</Text>
+                <View style={styles.inviteSearchBox}>
+                    <TextInput 
+                        placeholder="MM-1234" 
+                        placeholderTextColor="#999" 
+                        style={styles.inviteSearchInput} 
+                    />
+                </View>
+
+                {/* Participants List */}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+                    <View style={styles.inviteListContainer}>
+                        {PARTICIPANTS.map((p, i) => (
+                            <View key={p.id} style={[styles.inviteUserRow, i < PARTICIPANTS.length - 1 && styles.inviteUserBorder]}>
+                                <View style={styles.inviteUserAvatar}>
+                                    <Text style={styles.inviteUserAvatarText}>US</Text>
+                                </View>
+                                <View style={styles.inviteUserInfo}>
+                                    <Text style={styles.inviteUserName}>{p.name.toUpperCase()}</Text>
+                                    <Text style={styles.inviteUserUid}>{p.uid}</Text>
+                                </View>
+                                <Pressable 
+                                    style={[
+                                        styles.inviteActionBtn, 
+                                        p.status === 'Invited' ? styles.inviteActionBtnActive : styles.inviteActionBtnInactive
+                                    ]}
+                                >
+                                    <Text 
+                                        style={[
+                                            styles.inviteActionText,
+                                            p.status === 'Invited' ? styles.inviteActionTextActive : styles.inviteActionTextInactive
+                                        ]}
+                                    >
+                                        {p.status}
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        ))}
+                    </View>
+                </ScrollView>
+
+                {/* Copy Link Button */}
+                <View style={[styles.inviteBottomBtnContainer, { paddingBottom: insets.bottom + 20 }]}>
+                    <Pressable style={styles.inviteCopyBtn}>
+                        <Ionicons name="link-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.inviteCopyText}>Copy Link</Text>
+                    </Pressable>
+                </View>
+            </View>
         </View>
     );
 }
@@ -1661,5 +1786,287 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#888',
         marginTop: 4,
+    },
+
+    // ── Invite Participants Screen ──
+    inviteHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#F9FAFB',
+    },
+    inviteCloseBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#FFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        elevation: 2,
+    },
+    inviteTitle: {
+        flex: 1,
+        textAlign: 'center',
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    inviteTimeBadge: {
+        backgroundColor: '#BDD8FF',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    inviteTimeText: {
+        color: '#0047A5',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    inviteMusicCardContainer: {
+        marginHorizontal: 20,
+        marginTop: 10,
+        height: 120,
+        borderRadius: 20,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    inviteMusicBg: {
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+    },
+    inviteMusicOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(50, 50, 100, 0.4)',
+        padding: 16,
+        justifyContent: 'flex-end',
+    },
+    inviteMusicTitle: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    inviteMusicArtist: {
+        color: '#E0D4FF',
+        fontSize: 14,
+        marginBottom: 8,
+    },
+    inviteProgressContainer: {
+        marginTop: 4,
+    },
+    inviteProgressBar: {
+        height: 4,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 2,
+        position: 'relative',
+    },
+    inviteProgressFill: {
+        height: '100%',
+        backgroundColor: '#4A90E2',
+        borderRadius: 2,
+    },
+    inviteProgressThumb: {
+        position: 'absolute',
+        top: -4,
+        left: '68%',
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#4A90E2',
+    },
+    inviteProgressTimes: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 6,
+    },
+    inviteProgressTime: {
+        color: '#FFF',
+        fontSize: 12,
+    },
+    inviteSheet: {
+        flex: 1,
+        backgroundColor: '#FFF',
+        marginTop: -10, // overlap a bit
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+    },
+    inviteDragIndicator: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#E5E7EB',
+        borderRadius: 3,
+        alignSelf: 'center',
+        marginBottom: 16,
+    },
+    inviteSheetHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    inviteSheetTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    inviteSheetCloseCircle: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    inviteHostCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F7F4FF',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E8DFFF',
+        marginBottom: 20,
+    },
+    inviteHostName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#6C47FF',
+        marginBottom: 4,
+    },
+    inviteHostDesc: {
+        fontSize: 12,
+        color: '#A78BFA',
+    },
+    inviteHostBadge: {
+        backgroundColor: '#FFF',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E8DFFF',
+    },
+    inviteHostBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6C47FF',
+    },
+    inviteSearchLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#000',
+        marginBottom: 8,
+    },
+    inviteSearchBox: {
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginBottom: 20,
+    },
+    inviteSearchInput: {
+        fontSize: 15,
+        color: '#000',
+    },
+    inviteListContainer: {
+        backgroundColor: '#FCFCFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    inviteUserRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    inviteUserBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F5',
+    },
+    inviteUserAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    inviteUserAvatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    inviteUserInfo: {
+        flex: 1,
+    },
+    inviteUserName: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#000',
+        marginBottom: 4,
+    },
+    inviteUserUid: {
+        fontSize: 13,
+        color: '#888',
+    },
+    inviteActionBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 16,
+    },
+    inviteActionBtnInactive: {
+        backgroundColor: '#F3F0FF',
+    },
+    inviteActionBtnActive: {
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#D1FAE5',
+    },
+    inviteActionText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    inviteActionTextInactive: {
+        color: '#6C47FF',
+    },
+    inviteActionTextActive: {
+        color: '#10B981',
+    },
+    inviteBottomBtnContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: '#FFF',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+    },
+    inviteCopyBtn: {
+        flexDirection: 'row',
+        backgroundColor: '#5D45D6',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderRadius: 30,
+    },
+    inviteCopyText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFF',
     },
 });
