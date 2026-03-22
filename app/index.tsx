@@ -59,6 +59,7 @@ const ROOMS_DATA = [
         currentSong: 'Midnight Bloom - Hania Rani',
         currentMembers: 18,
         maxMembers: 30,
+        isStarred: false,
     },
     {
         id: '2',
@@ -66,10 +67,11 @@ const ROOMS_DATA = [
         avatar: 'AM',
         genres: ['Lo-Fi', 'Jazz'],
         code: 'MM#1234',
-        isLive: true,
+        isLive: false,
         currentSong: 'Midnight Bloom - Hania Rani',
-        currentMembers: 18,
+        currentMembers: 0,
         maxMembers: 30,
+        isStarred: true,
     },
     {
         id: '3',
@@ -77,16 +79,31 @@ const ROOMS_DATA = [
         avatar: 'AM',
         genres: ['Lo-Fi', 'Jazz'],
         code: 'MM#1234',
-        isLive: true,
+        isLive: false,
         currentSong: 'Midnight Bloom - Hania Rani',
-        currentMembers: 18,
+        currentMembers: 0,
         maxMembers: 30,
+        isStarred: true,
+    },
+    {
+        id: '4',
+        name: 'Chill Vibes Room',
+        avatar: 'AM',
+        genres: ['Lo-Fi', 'Jazz'],
+        code: 'MM#1234',
+        isLive: false,
+        currentSong: 'Midnight Bloom - Hania Rani',
+        currentMembers: 0,
+        maxMembers: 30,
+        isStarred: true,
     },
 ];
 
+type ScreenType = 'dashboard' | 'search' | 'create' | 'session' | 'notifications' | 'invite' | 'participants';
+
 // ─── APP ENTRY ────────────────────────────────────────────────────────────────
 export default function App() {
-    const [screen, setScreen] = useState<'dashboard' | 'create' | 'session' | 'notifications' | 'invite'>('dashboard');
+    const [screen, setScreen] = useState<ScreenType>('dashboard');
     const insets = useSafeAreaInsets();
 
     return (
@@ -97,6 +114,14 @@ export default function App() {
                     onCreateRoom={() => setScreen('create')}
                     onJoinRoom={() => setScreen('session')}
                     onOpenNotifications={() => setScreen('notifications')}
+                    onSearchTap={() => setScreen('search')}
+                    insets={insets}
+                />
+            )}
+            {screen === 'search' && (
+                <SearchRoomsScreen
+                    onBack={() => setScreen('dashboard')}
+                    onJoinRoom={() => setScreen('session')}
                     insets={insets}
                 />
             )}
@@ -111,6 +136,13 @@ export default function App() {
                 <ActiveSessionScreen
                     onEnd={() => setScreen('dashboard')}
                     onInvite={() => setScreen('invite')}
+                    onParticipants={() => setScreen('participants')}
+                    insets={insets}
+                />
+            )}
+            {screen === 'participants' && (
+                <ParticipantsScreen
+                    onBack={() => setScreen('session')}
                     insets={insets}
                 />
             )}
@@ -126,12 +158,56 @@ export default function App() {
                     insets={insets}
                 />
             )}
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── DASHBOARD SCREEN ─────────────────────────────────────────────────────────
-function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, insets }: any) {
+function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, onSearchTap, insets }: any) {
     const [activeTab, setActiveTab] = useState(0);
     const [searchText, setSearchText] = useState('');
     const liveCount = ROOMS_DATA.filter(r => r.isLive).length;
@@ -182,13 +258,9 @@ function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, insets
             {/* ── Search Bar ── */}
             <Animated.View entering={FadeInDown.delay(200).springify()} style={styles.searchContainer}>
                 <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search rooms..."
-                    placeholderTextColor="#AAA"
-                    value={searchText}
-                    onChangeText={setSearchText}
-                />
+                <Pressable onPress={onSearchTap} style={{ flex: 1, paddingVertical: 12 }}>
+                    <Text style={{ fontSize: 15, color: '#AAA' }}>Search rooms...</Text>
+                </Pressable>
                 <Pressable>
                     <Ionicons name="mic-outline" size={22} color="#6C47FF" />
                 </Pressable>
@@ -227,8 +299,8 @@ function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, insets
             {/* ── Live Counter ── */}
             <Animated.View entering={FadeIn.delay(350)} style={styles.liveCounterRow}>
                 <Animated.View style={[styles.liveDot, livePulseStyle]} />
-                <Text style={styles.liveCounterText}>
-                    <Text style={{ fontWeight: '700' }}>{liveCount} Rooms</Text> Live
+                <Text style={[styles.liveCounterText, { fontWeight: '600', color: '#4CAF50' }]}>
+                    Rooms you loved - quick rejoin when they go live
                 </Text>
             </Animated.View>
 
@@ -289,10 +361,54 @@ function DashboardScreen({ onCreateRoom, onJoinRoom, onOpenNotifications, insets
                     <Ionicons name="person-outline" size={26} color="#999" />
                 </Pressable>
             </Animated.View>
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── ROOM CARD COMPONENT ──────────────────────────────────────────────────────
 function RoomCard({ room, index, onJoin }: any) {
     return (
@@ -325,16 +441,18 @@ function RoomCard({ room, index, onJoin }: any) {
                             <Text style={styles.roomCode}> •{room.code}</Text>
                         </View>
                     </View>
-                    {room.isLive && (
+                    {room.isLive ? (
                         <View style={styles.roomLiveBadge}>
                             <View style={styles.roomLiveDot} />
                             <Text style={styles.roomLiveText}>LIVE</Text>
                         </View>
-                    )}
+                    ) : (room.isStarred && (
+                        <Ionicons name="star" size={24} color="#FFD700" style={{ marginLeft: 'auto' }} />
+                    ))}
                 </View>
 
                 {/* Song Row */}
-                <View style={styles.songRow}>
+                <View style={[styles.songRow, !room.isLive && { opacity: 0.2 }]}>
                     <View style={styles.eqBars}>
                         {[0, 1, 2, 3].map((b) => (
                             <AnimatedEQBar key={b} barIndex={b} />
@@ -346,30 +464,41 @@ function RoomCard({ room, index, onJoin }: any) {
                 </View>
 
                 {/* Bottom Row */}
-                <View style={styles.roomBottomRow}>
-                    <View style={styles.membersRow}>
-                        <Ionicons name="headset-outline" size={16} color="#E0D4FF" />
-                        <Text style={styles.membersText}>
-                            {' '}
-                            {room.currentMembers}/
-                            <Text style={{ fontWeight: '700' }}>{room.maxMembers}</Text>{' '}
-                            members
-                        </Text>
-                        {/* Small progress bar */}
-                        <View style={styles.memberBar}>
-                            <View
-                                style={[
-                                    styles.memberBarFill,
-                                    { width: `${(room.currentMembers / room.maxMembers) * 100}%` },
-                                ]}
-                            />
+                {room.isLive ? (
+                    <View style={styles.roomBottomRow}>
+                        <View style={styles.membersRow}>
+                            <Ionicons name="headset-outline" size={16} color="#E0D4FF" />
+                            <Text style={styles.membersText}>
+                                {' '}
+                                {room.currentMembers}/
+                                <Text style={{ fontWeight: '700' }}>{room.maxMembers}</Text>{' '}
+                                members
+                            </Text>
+                            {/* Small progress bar */}
+                            <View style={styles.memberBar}>
+                                <View
+                                    style={[
+                                        styles.memberBarFill,
+                                        { width: `${(room.currentMembers / room.maxMembers) * 100}%` },
+                                    ]}
+                                />
+                            </View>
                         </View>
+                        <Pressable style={styles.joinBtn} onPress={onJoin}>
+                            <Text style={styles.joinBtnText}>Join</Text>
+                            <Feather name="arrow-right" size={16} color="#6C47FF" />
+                        </Pressable>
                     </View>
-                    <Pressable style={styles.joinBtn} onPress={onJoin}>
-                        <Text style={styles.joinBtnText}>Join</Text>
-                        <Feather name="arrow-right" size={16} color="#6C47FF" />
-                    </Pressable>
-                </View>
+                ) : (
+                    <View style={[styles.roomBottomRow, { justifyContent: 'flex-start', gap: 10 }]}>
+                        <Pressable style={styles.notifyBtn}>
+                            <Text style={styles.notifyBtnText}>Notify on Live</Text>
+                        </Pressable>
+                        <Pressable style={styles.removeBtn}>
+                            <Text style={styles.removeBtnText}>Remove</Text>
+                        </Pressable>
+                    </View>
+                )}
             </LinearGradient>
         </Animated.View>
     );
@@ -400,6 +529,143 @@ function AnimatedEQBar({ barIndex }: { barIndex: number }) {
     }));
 
     return <Animated.View style={[styles.eqBar, animStyle]} />;
+}
+
+
+// ─── SEARCH ROOMS SCREEN ───────────────────────────────────────────────────────
+function SearchRoomsScreen({ onBack, onJoinRoom, insets }: any) {
+    const defaultChips = ['Lo-fi', 'Ambient', 'Instrumental', 'Morning', 'Jazz'];
+    return (
+        <View style={[styles.screen, { backgroundColor: '#F5F5FA' }]}>
+            <Animated.View entering={FadeInDown.delay(100).springify()} style={[styles.notifHeader, { paddingTop: insets.top + 10, paddingBottom: 10 }]}>
+                <Pressable style={styles.notifBackBtn} onPress={onBack}>
+                    <Ionicons name="arrow-back" size={24} color="#000" />
+                </Pressable>
+                <Text style={styles.notifTitle}>Search Rooms</Text>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(150).springify()} style={[styles.searchContainer, { marginTop: 0 }]}>
+                <Ionicons name="search-outline" size={20} color="#999" style={{ marginRight: 10 }} />
+                <TextInput style={styles.searchInput} placeholder="Search rooms..." placeholderTextColor="#AAA" autoFocus />
+                <Pressable>
+                    <Ionicons name="mic-outline" size={22} color="#6C47FF" />
+                </Pressable>
+            </Animated.View>
+
+            <Animated.View entering={FadeInDown.delay(200).springify()}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 15 }}>
+                    <Pressable style={[styles.filterTab, { paddingHorizontal: 10, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE' }]}>
+                        <Ionicons name="options-outline" size={18} color="#444" />
+                    </Pressable>
+                    {defaultChips.map(chip => (
+                        <Pressable key={chip} style={[styles.filterTab, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#EEE' }]}>
+                            <Text style={styles.filterTabText}>{chip}</Text>
+                        </Pressable>
+                    ))}
+                </ScrollView>
+            </Animated.View>
+
+            <FlatList
+                data={ROOMS_DATA.filter(r => r.isLive)}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.roomListContent}
+                renderItem={({ item, index }) => <RoomCard room={item} index={index} onJoin={onJoinRoom} />}
+            />
+            
+            <Animated.View entering={FadeInUp.delay(300).springify()} style={[styles.bottomNav, { paddingBottom: insets.bottom || 16 }]}>
+                <Pressable style={styles.navItem}>
+                    <Ionicons name="home" size={26} color="#6C47FF" />
+                </Pressable>
+                <Pressable style={styles.navItem}>
+                    <Ionicons name="people-outline" size={26} color="#999" />
+                </Pressable>
+                <Pressable style={styles.navItem}>
+                    <Ionicons name="globe-outline" size={26} color="#999" />
+                </Pressable>
+                <Pressable style={styles.navItem}>
+                    <Ionicons name="link-outline" size={26} color="#999" />
+                </Pressable>
+                <Pressable style={styles.navItem}>
+                    <Ionicons name="person-outline" size={26} color="#999" />
+                </Pressable>
+            </Animated.View>
+        </View>
+    );
+}
+
+// ─── PARTICIPANTS SCREEN ─────────────────────────────────────────────────────
+function ParticipantsScreen({ onBack, insets }: any) {
+    const PARTICIPANTS = [
+        { id: '1', name: 'ARIJIT', uid: 'MM-1234', isHost: true },
+        { id: '2', name: 'ARIJIT', uid: 'MM-1234', isHost: false },
+        { id: '3', name: 'ARIJIT', uid: 'MM-1234', isHost: false },
+        { id: '4', name: 'ARIJIT', uid: 'MM-1234', isHost: false },
+        { id: '5', name: 'ARIJIT', uid: 'MM-1234', isHost: false },
+        { id: '6', name: 'ARIJIT', uid: 'MM-1234', isHost: false },
+    ];
+
+    const host = PARTICIPANTS.filter((p) => p.isHost);
+    const guests = PARTICIPANTS.filter((p) => !p.isHost);
+
+    return (
+        <View style={[styles.screen, { backgroundColor: '#FFF' }]}>
+            <View style={[styles.participantsHeader, { paddingTop: insets.top + 10 }]}>
+                <Pressable onPress={onBack} style={styles.participantsBackBtn}>
+                    <Ionicons name="chevron-back" size={24} color="#000" />
+                </Pressable>
+                <Text style={styles.participantsTitle}>Participants</Text>
+                <Pressable style={styles.participantsShareBtn}>
+                    <Ionicons name="arrow-up-circle-outline" size={26} color="#6C47FF" />
+                </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.participantsContent} showsVerticalScrollIndicator={false}>
+                <Text style={styles.participantsSectionTitle}>HOST</Text>
+                <View style={styles.participantsCard}>
+                    {host.map((item) => (
+                        <View key={item.id} style={styles.participantRow}>
+                            <View style={styles.participantAvatar}>
+                                <Text style={styles.participantAvatarText}>US</Text>
+                            </View>
+                            <View style={styles.participantInfo}>
+                                <Text style={styles.participantName}>{item.name}</Text>
+                                <Text style={styles.participantUid}>{item.uid}</Text>
+                            </View>
+                            <View style={styles.participantHostBadge}>
+                                <Text style={styles.participantHostBadgeText}>Host</Text>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+
+                <Text style={styles.participantsSectionTitle}>GUESTS</Text>
+                <View style={[styles.participantsCard, { marginBottom: 120 }]}>
+                    {guests.map((item, index) => (
+                        <View key={item.id} style={[styles.participantRow, index < guests.length - 1 && styles.participantUserBorder]}>
+                            <View style={styles.participantAvatar}>
+                                <Text style={styles.participantAvatarText}>US</Text>
+                            </View>
+                            <View style={styles.participantInfo}>
+                                <Text style={styles.participantName}>{item.name}</Text>
+                                <Text style={styles.participantUid}>{item.uid}</Text>
+                            </View>
+                            <Pressable style={styles.participantMoreBtn}>
+                                <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
+                            </Pressable>
+                        </View>
+                    ))}
+                </View>
+            </ScrollView>
+
+            <View style={[styles.participantsBottom, { paddingBottom: insets.bottom + 20 }]}>
+                <Pressable style={styles.participantsInviteBtn}>
+                    <Ionicons name="arrow-up-circle-outline" size={20} color="#6C47FF" style={{marginRight: 8}} />
+                    <Text style={styles.participantsInviteText}>Invite More</Text>
+                </Pressable>
+            </View>
+        </View>
+    );
 }
 
 // ─── CREATE ROOM SCREEN (existing, updated) ──────────────────────────────────
@@ -558,12 +824,57 @@ function CreateRoomScreen({ onStart, onBack, insets }: any) {
                 <Ionicons name="link-outline" size={28} color="#000" />
                 <Ionicons name="person-outline" size={28} color="#000" />
             </Animated.View>
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── ACTIVE SESSION SCREEN (existing) ─────────────────────────────────────────
-function ActiveSessionScreen({ onEnd, onInvite, insets }: any) {
+function ActiveSessionScreen({ onEnd, onInvite, onParticipants, insets }: any) {
+    const [showEndModal, setShowEndModal] = useState(false);
     const rotation = useSharedValue(0);
     const pulse = useSharedValue(1);
     const float1 = useSharedValue(0);
@@ -609,8 +920,256 @@ function ActiveSessionScreen({ onEnd, onInvite, insets }: any) {
         chatHeight.value = withSpring(chatOpen ? 250 : 0, {
             damping: 15,
             stiffness: 100,
-        });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
+    // New additions
+    offlineActionsRow: {
+        flexDirection: 'row',
+        marginTop: 14,
+        gap: 10,
+    },
+    notifyBtn: {
+        backgroundColor: '#D1C4E9',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    notifyBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#6C47FF',
+    },
+    removeBtn: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    removeBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    endModalContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+    },
+    endModalIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    endModalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 8,
+    },
+    endModalDesc: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    endModalStatsCard: {
+        width: '100%',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    endModalStatRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+        marginBottom: 4,
+    },
+    endModalStatLabel: {
+        fontSize: 13,
+        color: '#666',
+    },
+    endModalStatValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111',
+    },
+    endEveryoneBtn: {
+        width: '100%',
+        backgroundColor: '#FF3B30',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    endEveryoneBtnText: {
+        color: '#FFF',
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
+    leaveRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F3F0FF',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    leaveRoomBtnText: {
+        color: '#6C47FF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    cancelRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F7F7F7',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+    },
+    cancelRoomBtnText: {
+        color: '#111',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    participantsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#FFF',
+    },
+    participantsTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    participantsBackBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    participantsShareBtn: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 22,
+        backgroundColor: '#F3F0FF',
+    },
+    participantsContent: {
+        paddingHorizontal: 20,
+    },
+    participantsSectionTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#000',
+        marginTop: 20,
+        marginBottom: 12,
+        letterSpacing: 0.5,
+    },
+    participantsCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 5,
+        elevation: 1,
+    },
+    participantRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
+    participantUserBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F5',
+    },
+    participantAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    participantAvatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    participantInfo: {
+        flex: 1,
+    },
+    participantName: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 2,
+    },
+    participantUid: {
+        fontSize: 13,
+        color: '#888',
+    },
+    participantHostBadge: {
+        backgroundColor: '#F3F0FF',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    participantHostBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6C47FF',
+    },
+    participantMoreBtn: {
+        padding: 8,
+    },
+    participantsBottom: {
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        backgroundColor: '#FFF',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    participantsInviteBtn: {
+        flexDirection: 'row',
+        backgroundColor: '#EAE6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderRadius: 30,
+    },
+    participantsInviteText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#6C47FF',
+    },
+});        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [chatOpen]);
 
     const animatedRecord = useAnimatedStyle(() => ({
@@ -675,8 +1234,256 @@ function ActiveSessionScreen({ onEnd, onInvite, insets }: any) {
                             float2.value,
                         ];
                         return { transform: [{ translateY: offsets[i % 5] }] };
-                    });
-
+                    
+    // New additions
+    offlineActionsRow: {
+        flexDirection: 'row',
+        marginTop: 14,
+        gap: 10,
+    },
+    notifyBtn: {
+        backgroundColor: '#D1C4E9',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    notifyBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#6C47FF',
+    },
+    removeBtn: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    removeBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    endModalContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+    },
+    endModalIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    endModalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 8,
+    },
+    endModalDesc: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    endModalStatsCard: {
+        width: '100%',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    endModalStatRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+        marginBottom: 4,
+    },
+    endModalStatLabel: {
+        fontSize: 13,
+        color: '#666',
+    },
+    endModalStatValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111',
+    },
+    endEveryoneBtn: {
+        width: '100%',
+        backgroundColor: '#FF3B30',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    endEveryoneBtnText: {
+        color: '#FFF',
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
+    leaveRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F3F0FF',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    leaveRoomBtnText: {
+        color: '#6C47FF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    cancelRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F7F7F7',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+    },
+    cancelRoomBtnText: {
+        color: '#111',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    participantsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#FFF',
+    },
+    participantsTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    participantsBackBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    participantsShareBtn: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 22,
+        backgroundColor: '#F3F0FF',
+    },
+    participantsContent: {
+        paddingHorizontal: 20,
+    },
+    participantsSectionTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#000',
+        marginTop: 20,
+        marginBottom: 12,
+        letterSpacing: 0.5,
+    },
+    participantsCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 5,
+        elevation: 1,
+    },
+    participantRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
+    participantUserBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F5',
+    },
+    participantAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    participantAvatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    participantInfo: {
+        flex: 1,
+    },
+    participantName: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 2,
+    },
+    participantUid: {
+        fontSize: 13,
+        color: '#888',
+    },
+    participantHostBadge: {
+        backgroundColor: '#F3F0FF',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    participantHostBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6C47FF',
+    },
+    participantMoreBtn: {
+        padding: 8,
+    },
+    participantsBottom: {
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        backgroundColor: '#FFF',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    participantsInviteBtn: {
+        flexDirection: 'row',
+        backgroundColor: '#EAE6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderRadius: 30,
+    },
+    participantsInviteText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#6C47FF',
+    },
+});
                     return (
                         <Animated.View
                             key={i}
@@ -800,20 +1607,67 @@ function ActiveSessionScreen({ onEnd, onInvite, insets }: any) {
                             color={chatOpen ? '#000' : '#FFF'}
                         />
                     </Pressable>
+                    <Pressable style={styles.actionBtn} onPress={onParticipants}>
+                        <Ionicons name="people-outline" size={24} color="#FFF" />
+                    </Pressable>
                     <Pressable style={styles.actionBtn} onPress={onInvite}>
                         <Ionicons name="share-outline" size={24} color="#FFF" />
                     </Pressable>
                 </View>
 
-                <Pressable style={styles.endBtn} onPress={onEnd}>
+                <Pressable style={styles.endBtn} onPress={() => setShowEndModal(true)}>
                     <Ionicons name="call" size={20} color="#FFF" />
                     <Text style={styles.endBtnText}>End Session</Text>
                 </Pressable>
             </BlurView>
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── INVITE PARTICIPANTS SCREEN ───────────────────────────────────────────────
 function InviteParticipantsScreen({ onClose, insets }: any) {
     const PARTICIPANTS = [
@@ -928,10 +1782,54 @@ function InviteParticipantsScreen({ onClose, insets }: any) {
                     </Pressable>
                 </View>
             </View>
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── NOTIFICATIONS SCREEN ─────────────────────────────────────────────────────
 function NotificationsScreen({ onBack, insets }: any) {
     const NOTIFICATIONS = [
@@ -1024,10 +1922,54 @@ function NotificationsScreen({ onBack, insets }: any) {
                     </Animated.View>
                 ))}
             </ScrollView>
+
+            {showEndModal && (
+                <Animated.View
+                    entering={FadeIn.duration(300)}
+                    exiting={FadeInDown.duration(300)}
+                    style={[StyleSheet.absoluteFillObject, { zIndex: 100 }]}
+                >
+                    <BlurView intensity={40} tint="dark" style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                        <Animated.View entering={ZoomIn.springify()} style={styles.endModalContainer}>
+                            <View style={styles.endModalIconContainer}>
+                                <Ionicons name="exit-outline" size={32} color="#6C47FF" />
+                            </View>
+                            <Text style={styles.endModalTitle}>End Session?</Text>
+                            <Text style={styles.endModalDesc}>
+                                Closing <Text style={{fontWeight: '700'}}>Midnight Lo-Fi Vol-3</Text> will disconnect all members immediately. This cannot be undone.
+                            </Text>
+
+                            <View style={styles.endModalStatsCard}>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Room</Text>
+                                    <Text style={styles.endModalStatValue}>Midnight Lo-Fi Vol-3</Text>
+                                </View>
+                                <View style={styles.endModalStatRow}>
+                                    <Text style={styles.endModalStatLabel}>Members active</Text>
+                                    <Text style={styles.endModalStatValue}>6</Text>
+                                </View>
+                                <View style={[styles.endModalStatRow, { borderBottomWidth: 0, marginBottom: 0 }]}>
+                                    <Text style={styles.endModalStatLabel}>Session duration</Text>
+                                    <Text style={styles.endModalStatValue}>38 min</Text>
+                                </View>
+                            </View>
+
+                            <Pressable style={styles.endEveryoneBtn} onPress={onEnd}>
+                                <Text style={styles.endEveryoneBtnText}>End Session for Everyone</Text>
+                            </Pressable>
+                            <Pressable style={styles.leaveRoomBtn} onPress={onEnd}>
+                                <Text style={styles.leaveRoomBtnText}>Leave Room(keep Active)</Text>
+                            </Pressable>
+                            <Pressable style={styles.cancelRoomBtn} onPress={() => setShowEndModal(false)}>
+                                <Text style={styles.cancelRoomBtnText}>Cancel</Text>
+                            </Pressable>
+                        </Animated.View>
+                    </BlurView>
+                </Animated.View>
+            )}
         </View>
     );
 }
-
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#FFF' },
@@ -2068,5 +3010,254 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFF',
+    },
+
+    // New additions
+    offlineActionsRow: {
+        flexDirection: 'row',
+        marginTop: 14,
+        gap: 10,
+    },
+    notifyBtn: {
+        backgroundColor: '#D1C4E9',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    notifyBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#6C47FF',
+    },
+    removeBtn: {
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 18,
+    },
+    removeBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    endModalContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 24,
+        padding: 24,
+        width: '100%',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+    },
+    endModalIconContainer: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    endModalTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 8,
+    },
+    endModalDesc: {
+        fontSize: 14,
+        color: '#666',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    endModalStatsCard: {
+        width: '100%',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+    },
+    endModalStatRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+        marginBottom: 4,
+    },
+    endModalStatLabel: {
+        fontSize: 13,
+        color: '#666',
+    },
+    endModalStatValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#111',
+    },
+    endEveryoneBtn: {
+        width: '100%',
+        backgroundColor: '#FF3B30',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    endEveryoneBtnText: {
+        color: '#FFF',
+        fontSize: 15,
+        fontWeight: 'bold',
+    },
+    leaveRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F3F0FF',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    leaveRoomBtnText: {
+        color: '#6C47FF',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    cancelRoomBtn: {
+        width: '100%',
+        backgroundColor: '#F7F7F7',
+        paddingVertical: 16,
+        borderRadius: 30,
+        alignItems: 'center',
+    },
+    cancelRoomBtnText: {
+        color: '#111',
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    participantsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        backgroundColor: '#FFF',
+    },
+    participantsTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#000',
+    },
+    participantsBackBtn: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F9FAFB',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    participantsShareBtn: {
+        width: 44,
+        height: 44,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 22,
+        backgroundColor: '#F3F0FF',
+    },
+    participantsContent: {
+        paddingHorizontal: 20,
+    },
+    participantsSectionTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#000',
+        marginTop: 20,
+        marginBottom: 12,
+        letterSpacing: 0.5,
+    },
+    participantsCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F0F0F5',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.02,
+        shadowRadius: 5,
+        elevation: 1,
+    },
+    participantRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+    },
+    participantUserBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F5',
+    },
+    participantAvatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        backgroundColor: '#F3F0FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 12,
+    },
+    participantAvatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    participantInfo: {
+        flex: 1,
+    },
+    participantName: {
+        fontSize: 15,
+        fontWeight: 'bold',
+        color: '#111',
+        marginBottom: 2,
+    },
+    participantUid: {
+        fontSize: 13,
+        color: '#888',
+    },
+    participantHostBadge: {
+        backgroundColor: '#F3F0FF',
+        paddingHorizontal: 12,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    participantHostBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6C47FF',
+    },
+    participantMoreBtn: {
+        padding: 8,
+    },
+    participantsBottom: {
+        position: 'absolute',
+        bottom: 0,
+        width: '100%',
+        backgroundColor: '#FFF',
+        paddingHorizontal: 20,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderColor: '#F0F0F5',
+    },
+    participantsInviteBtn: {
+        flexDirection: 'row',
+        backgroundColor: '#EAE6FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: 16,
+        borderRadius: 30,
+    },
+    participantsInviteText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#6C47FF',
     },
 });
